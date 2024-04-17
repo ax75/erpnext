@@ -26,6 +26,33 @@ class InactiveEmployeeStatusError(frappe.ValidationError):
 class Employee(NestedSet):
 	nsm_parent_field = "reports_to"
 
+	def cus_log(self, d):
+		print("######################################################")
+		print(d)
+		print("######################################################")
+
+
+	def set_aapt_id(self):
+		self.cus_log(self.employee_number != None and self.employee_number != "")
+		aapt_id = self.naming_series + self.employee_number if self.employee_number != None else self.naming_series
+		self.aapt_id_type = None
+		if self.employee_number != None and self.employee_number != "":
+			existing_user_id = frappe.db.get_value("Employee", aapt_id, "name")
+			self.cus_log("Inside Employee Number")
+			if existing_user_id:
+				throw(f"There is already Employee Created with Employee ID \"{self.employee_number}\". Please enter a Employee ID which is not in the system.")
+			self.aapt_id_type = "not auto"
+			return aapt_id
+		
+		self.aapt_settings = frappe.get_last_doc("AAPT Settings")
+		aapt_id = aapt_id + str(self.aapt_settings.aapt_id_counter)
+		self.cus_log(aapt_id)
+		
+		self.aapt_id_type = "auto"
+		return aapt_id
+
+
+
 	def autoname(self):
 		set_name_by_naming_series(self)
 		self.employee = self.name
@@ -35,8 +62,7 @@ class Employee(NestedSet):
 
 		validate_status(self.status, ["Active", "Inactive", "Suspended", "Left"])
 
-		self.employee = self.name
-		self.set_employee_name()
+		
 		self.validate_date()
 		self.validate_email()
 		self.validate_status()
@@ -52,6 +78,12 @@ class Employee(NestedSet):
 				validate_employee_role(user, ignore_emp_check=True)
 				user.save(ignore_permissions=True)
 				remove_user_permission("Employee", self.name, existing_user_id)
+
+		self.name = self.set_aapt_id()
+		self.cus_log(self.name)
+
+		self.employee = self.name
+		self.set_employee_name()
 
 	def after_rename(self, old, new, merge):
 		self.db_set("employee", new)
