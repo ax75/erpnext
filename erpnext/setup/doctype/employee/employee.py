@@ -79,7 +79,8 @@ class Employee(NestedSet):
 				user.save(ignore_permissions=True)
 				remove_user_permission("Employee", self.name, existing_user_id)
 
-		self.name = self.set_aapt_id()
+		if self.is_new():
+			self.name = self.set_aapt_id()
 		self.cus_log(self.name)
 
 		self.employee = self.name
